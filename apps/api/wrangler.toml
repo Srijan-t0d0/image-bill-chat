@@ -1,0 +1,8 @@
+name = "image-bill-chat-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bill-chat-db"
+database_id = "placeholder-replace-after-d1-create"
