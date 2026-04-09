@@ -1,19 +1,17 @@
 {
   "expo": {
-    "name": "image-bill-chat",
+    "name": "Bill Scanner",
     "slug": "image-bill-chat",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "image-bill-chat",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +19,17 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.srijan.billscanner"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Bill Scanner to access your photos to scan bills.",
+          "cameraPermission": "Allow Bill Scanner to use your camera to photograph bills."
+        }
+      ]
+    ]
   }
 }
