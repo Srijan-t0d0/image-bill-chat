@@ -18,6 +18,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // AI endpoints
+  extractBill: (image: string) =>
+    request<Invoice>('/api/ai/extract', {
+      method: 'POST',
+      body: JSON.stringify({ image }),
+    }),
+
+  editBill: (invoice: Invoice, instruction: string) =>
+    request<Invoice>('/api/ai/edit', {
+      method: 'POST',
+      body: JSON.stringify({ invoice, instruction }),
+    }),
+
   // Invoices
   createInvoice: (invoice: Invoice) =>
     request<{ id: string } & Invoice>('/api/invoices', {

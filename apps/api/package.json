@@ -11,7 +11,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply bill-chat-db --remote"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.61",
     "@image-bill-chat/shared": "workspace:*",
+    "ai": "^6.0.154",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.7.0",
     "zod": "^4.3.6"
