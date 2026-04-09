@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,43 +5,49 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useProfileStore } from '../store/profileStore';
+import { useForm, Controller } from 'react-hook-form';
+import { businessProfileSchema } from '@image-bill-chat/shared';
 import type { BusinessProfile } from '../constants/business';
 import { EMPTY_BUSINESS_PROFILE } from '../constants/business';
+import { useProfileStore } from '../store/profileStore';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { setProfile } = useProfileStore();
-  const [form, setForm] = useState<BusinessProfile>(EMPTY_BUSINESS_PROFILE);
 
-  const updateField = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<BusinessProfile>({
+    defaultValues: EMPTY_BUSINESS_PROFILE,
+  });
 
-  const updateBankField = (field: string, value: string) => {
-    setForm((prev) => ({
-      ...prev,
-      bank: { ...prev.bank, [field]: value },
-    }));
-  };
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      Alert.alert('Required', 'Please enter your business name.');
+  const onSubmit = async (data: BusinessProfile) => {
+    // Validate with Zod
+    const result = businessProfileSchema.safeParse(data);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const path = issue.path.join('.') as keyof BusinessProfile;
+        setError(path, { message: issue.message });
+      }
       return;
     }
 
-    const profile: BusinessProfile = {
-      ...form,
-      services: form.services.length > 0
-        ? form.services
-        : form.name ? ['General Services'] : [],
-    };
+    const profile = result.data;
+    if (profile.services.length === 0 && profile.name) {
+      profile.services = ['General Services'];
+    }
+    // Uppercase PAN/GSTIN/UDYAM/IFSC
+    profile.pan = profile.pan.toUpperCase();
+    profile.gstin = profile.gstin.toUpperCase();
+    profile.udyam = profile.udyam.toUpperCase();
+    profile.bank.ifsc = profile.bank.ifsc.toUpperCase();
 
     await setProfile(profile);
     router.replace('/');
@@ -60,106 +65,125 @@ export default function OnboardingScreen() {
       >
         <Text style={styles.title}>Business Setup</Text>
         <Text style={styles.subtitle}>
-          Enter your business details. These will appear on your invoices.
+          Enter your business details. These appear on your invoices.{'\n'}
           All data is stored only on this device.
         </Text>
 
         <Text style={styles.sectionTitle}>Business Details</Text>
 
         <Field
+          name="name"
           label="Business Name *"
-          value={form.name}
-          onChangeText={(v) => updateField('name', v)}
           placeholder="Your business name"
+          control={control}
+          error={errors.name?.message}
         />
         <Field
+          name="address"
           label="Address"
-          value={form.address}
-          onChangeText={(v) => updateField('address', v)}
           placeholder="Full address with PIN code"
+          control={control}
+          error={errors.address?.message}
         />
         <Field
+          name="phone"
           label="Phone"
-          value={form.phone}
-          onChangeText={(v) => updateField('phone', v)}
           placeholder="Phone number"
+          control={control}
           keyboardType="phone-pad"
         />
         <Field
+          name="email"
           label="Email"
-          value={form.email}
-          onChangeText={(v) => updateField('email', v)}
           placeholder="Email address"
+          control={control}
           keyboardType="email-address"
+          error={errors.email?.message}
         />
         <Field
+          name="pan"
           label="PAN"
-          value={form.pan}
-          onChangeText={(v) => updateField('pan', v.toUpperCase())}
           placeholder="PAN number"
+          control={control}
           autoCapitalize="characters"
         />
         <Field
+          name="gstin"
           label="GSTIN"
-          value={form.gstin}
-          onChangeText={(v) => updateField('gstin', v.toUpperCase())}
           placeholder="GSTIN number"
+          control={control}
           autoCapitalize="characters"
         />
         <Field
+          name="udyam"
           label="UDYAM Registration"
-          value={form.udyam}
-          onChangeText={(v) => updateField('udyam', v.toUpperCase())}
           placeholder="UDYAM number (optional)"
+          control={control}
           autoCapitalize="characters"
         />
-        <Field
-          label="Services (comma separated)"
-          value={form.services.join(', ')}
-          onChangeText={(v) =>
-            setForm((prev) => ({
-              ...prev,
-              services: v.split(',').map((s) => s.trim()).filter(Boolean),
-            }))
-          }
-          placeholder="e.g. PA System, Stage Lighting"
+
+        <Controller
+          name="services"
+          control={control}
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Services (comma separated)</Text>
+              <TextInput
+                style={styles.input}
+                value={value.join(', ')}
+                onChangeText={(v) =>
+                  onChange(
+                    v
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  )
+                }
+                placeholder="e.g. PA System, Stage Lighting"
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+          )}
         />
 
         <Text style={styles.sectionTitle}>Bank Details</Text>
 
         <Field
+          name="bank.holder"
           label="Account Holder Name"
-          value={form.bank.holder}
-          onChangeText={(v) => updateBankField('holder', v)}
           placeholder="Name as on bank account"
+          control={control}
         />
         <Field
+          name="bank.bank_name"
           label="Bank Name"
-          value={form.bank.bank_name}
-          onChangeText={(v) => updateBankField('bank_name', v)}
           placeholder="Bank name"
+          control={control}
         />
         <Field
+          name="bank.account"
           label="Account Number"
-          value={form.bank.account}
-          onChangeText={(v) => updateBankField('account', v)}
           placeholder="Account number"
+          control={control}
           keyboardType="numeric"
         />
         <Field
+          name="bank.ifsc"
           label="IFSC Code"
-          value={form.bank.ifsc}
-          onChangeText={(v) => updateBankField('ifsc', v.toUpperCase())}
           placeholder="IFSC code"
+          control={control}
           autoCapitalize="characters"
         />
 
         <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleSave}
+          style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
+          onPress={handleSubmit(onSubmit)}
           activeOpacity={0.8}
+          disabled={isSubmitting}
         >
-          <Text style={styles.saveText}>Save & Continue</Text>
+          <Text style={styles.saveText}>
+            {isSubmitting ? 'Saving...' : 'Save & Continue'}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -169,33 +193,43 @@ export default function OnboardingScreen() {
 }
 
 function Field({
+  name,
   label,
-  value,
-  onChangeText,
   placeholder,
+  control,
+  error,
   keyboardType,
   autoCapitalize,
 }: {
+  name: string;
   label: string;
-  value: string;
-  onChangeText: (text: string) => void;
   placeholder: string;
+  control: any;
+  error?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address' | 'numeric';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }) {
   return (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#9ca3af"
-        keyboardType={keyboardType || 'default'}
-        autoCapitalize={autoCapitalize || 'sentences'}
-      />
-    </View>
+    <Controller
+      name={name}
+      control={control}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>{label}</Text>
+          <TextInput
+            style={[styles.input, error ? styles.inputError : null]}
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            placeholder={placeholder}
+            placeholderTextColor="#9ca3af"
+            keyboardType={keyboardType || 'default'}
+            autoCapitalize={autoCapitalize || 'sentences'}
+          />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
+      )}
+    />
   );
 }
 
@@ -242,6 +276,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: '#1f2937',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  inputError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 4,
   },
   saveButton: {
     backgroundColor: '#2563eb',
@@ -249,6 +294,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     marginTop: 28,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#93c5fd',
   },
   saveText: {
     color: '#fff',
