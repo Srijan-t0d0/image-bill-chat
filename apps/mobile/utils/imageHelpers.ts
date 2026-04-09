@@ -17,7 +17,7 @@ export async function pickImageFromCamera(): Promise<ImageResult | null> {
     mediaTypes: ['images'],
     quality: 0.8,
     base64: true,
-    allowsEditing: true,
+    allowsEditing: false,
   });
 
   if (result.canceled || !result.assets[0]) return null;
@@ -43,7 +43,7 @@ export async function pickImageFromGallery(): Promise<ImageResult | null> {
     mediaTypes: ['images'],
     quality: 0.8,
     base64: true,
-    allowsEditing: true,
+    allowsEditing: false,
   });
 
   if (result.canceled || !result.assets[0]) return null;
