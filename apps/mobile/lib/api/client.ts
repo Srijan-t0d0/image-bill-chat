@@ -1,4 +1,6 @@
+import { File, Paths } from 'expo-file-system/next';
 import type { Invoice, ChatMessage } from '../../types/bill';
+import type { BusinessProfile } from '../../constants/business';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8787';
 
@@ -30,6 +32,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ invoice, instruction }),
     }),
+
+  // Spreadsheet generation
+  generateSpreadsheet: async (
+    invoice: Invoice,
+    business: BusinessProfile,
+  ): Promise<string> => {
+    const res = await fetch(`${API_BASE}/api/spreadsheet/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice, business }),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to generate spreadsheet');
+    }
+
+    const arrayBuffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    const filename = `Invoice_${invoice.invoice_number || 'draft'}.xlsx`;
+    const file = new File(Paths.cache, filename);
+    file.write(bytes);
+
+    return file.uri;
+  },
 
   // Invoices
   createInvoice: (invoice: Invoice) =>

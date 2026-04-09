@@ -20,6 +20,7 @@ import { BillSummary } from '../components/BillSummary';
 import { ChatInput } from '../components/ChatInput';
 import { ChatBubble } from '../components/ChatBubble';
 import { useProfileStore } from '../store/profileStore';
+import { api } from '../lib/api/client';
 import type { ChatMessage } from '../types/bill';
 
 export default function BillEditorScreen() {
@@ -95,6 +96,16 @@ export default function BillEditorScreen() {
     }
   };
 
+  const handleGenerateXLSX = async () => {
+    try {
+      const uri = await api.generateSpreadsheet(invoice, profile);
+      setPdfUri(uri);
+      router.push('/pdf-preview');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to generate spreadsheet. Please try again.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -154,14 +165,23 @@ export default function BillEditorScreen() {
         {/* Summary */}
         <BillSummary invoice={invoice} />
 
-        {/* Generate PDF Button */}
-        <TouchableOpacity
-          style={styles.pdfButton}
-          onPress={handleGeneratePDF}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.pdfButtonText}>📄 Generate Invoice PDF</Text>
-        </TouchableOpacity>
+        {/* Generate Buttons */}
+        <View style={styles.generateButtons}>
+          <TouchableOpacity
+            style={styles.xlsxButton}
+            onPress={handleGenerateXLSX}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.generateButtonText}>📊 Excel Invoice</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.pdfButton}
+            onPress={handleGeneratePDF}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.generateButtonText}>📄 PDF Invoice</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Chat Messages */}
         {chatMessages.length > 0 && (
@@ -257,16 +277,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     textTransform: 'uppercase',
   },
-  pdfButton: {
-    backgroundColor: '#059669',
-    paddingVertical: 18,
-    borderRadius: 14,
-    alignItems: 'center',
+  generateButtons: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 20,
   },
-  pdfButtonText: {
+  xlsxButton: {
+    flex: 1,
+    backgroundColor: '#16a34a',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  pdfButton: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  generateButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   chatSection: {

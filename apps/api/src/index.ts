@@ -4,6 +4,7 @@ import { createDb } from './db';
 import { invoiceRoutes } from './routes/invoices';
 import { messageRoutes } from './routes/messages';
 import { aiRoutes } from './routes/ai';
+import { spreadsheetRoutes } from './routes/spreadsheet';
 import type { Database } from './db';
 
 export type Env = {
@@ -31,5 +32,6 @@ app.get('/health', (c) => c.json({ ok: true, timestamp: new Date().toISOString()
 app.route('/api/ai', aiRoutes);
 app.route('/api/invoices', invoiceRoutes);
 app.route('/api/messages', messageRoutes);
+app.route('/api/spreadsheet', spreadsheetRoutes);
 
 export default app;

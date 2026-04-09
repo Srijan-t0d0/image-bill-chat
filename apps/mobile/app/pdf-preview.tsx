@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   View,
   Text,
@@ -7,42 +6,44 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useBillStore } from '../store/billStore';
-import { useProfileStore } from '../store/profileStore';
-import { sharePDF, generatePDF } from '../services/pdf';
 
-export default function PdfPreviewScreen() {
+export default function FilePreviewScreen() {
   const router = useRouter();
-  const { pdfUri, invoice } = useBillStore();
-  const { profile } = useProfileStore();
+  const { pdfUri } = useBillStore();
+
+  const isXlsx = pdfUri?.endsWith('.xlsx');
+  const fileType = isXlsx ? 'Excel' : 'PDF';
+  const icon = isXlsx ? '📊' : '📄';
+  const mimeType = isXlsx
+    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    : 'application/pdf';
 
   const handleShare = async () => {
     if (!pdfUri) {
-      Alert.alert('Error', 'No PDF to share.');
+      Alert.alert('Error', 'No file to share.');
       return;
     }
     try {
-      await sharePDF(pdfUri);
-    } catch (err) {
-      Alert.alert('Error', 'Failed to share PDF.');
-    }
-  };
-
-  const handleRegenerate = async () => {
-    if (!invoice) return;
-    try {
-      const uri = await generatePDF(invoice, profile);
-      useBillStore.getState().setPdfUri(uri);
-      Alert.alert('Success', 'PDF regenerated!');
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Error', 'Sharing is not available on this device.');
+        return;
+      }
+      await Sharing.shareAsync(pdfUri, {
+        mimeType,
+        dialogTitle: `Share Invoice ${fileType}`,
+      });
     } catch {
-      Alert.alert('Error', 'Failed to regenerate PDF.');
+      Alert.alert('Error', 'Failed to share file.');
     }
   };
 
   if (!pdfUri) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>No PDF generated yet.</Text>
+        <Text style={styles.emptyText}>No file generated yet.</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
@@ -53,11 +54,12 @@ export default function PdfPreviewScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.icon}>📄</Text>
-        <Text style={styles.title}>Invoice PDF Ready!</Text>
+        <Text style={styles.icon}>{icon}</Text>
+        <Text style={styles.title}>Invoice {fileType} Ready!</Text>
         <Text style={styles.subtitle}>
-          Your invoice has been generated. Share it via WhatsApp, email, or save
-          it to your device.
+          {isXlsx
+            ? 'Your Excel invoice has formulas for GST and totals. Open in Google Sheets to verify the math.'
+            : 'Your invoice has been generated. Share it via WhatsApp, email, or save it to your device.'}
         </Text>
       </View>
 
@@ -68,14 +70,6 @@ export default function PdfPreviewScreen() {
           activeOpacity={0.8}
         >
           <Text style={styles.shareText}>📤 Share Invoice</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleRegenerate}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryText}>🔄 Regenerate PDF</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
