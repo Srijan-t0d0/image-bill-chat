@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { v4 as uuid } from 'uuid';
+import * as Crypto from 'expo-crypto';
 import { useBillStore } from '../store/billStore';
 import { editBillWithNL } from '../lib/ai/edit-bill';
 import { validateAndFixBill } from '../lib/validation/validate-bill';
@@ -49,7 +49,7 @@ export default function BillEditorScreen() {
 
   const handleNLEdit = async (instruction: string) => {
     const userMsg: ChatMessage = {
-      id: uuid(),
+      id: Crypto.randomUUID(),
       role: 'user',
       text: instruction,
       timestamp: Date.now(),
@@ -63,7 +63,7 @@ export default function BillEditorScreen() {
       setInvoice(fixedUpdated);
 
       const assistantMsg: ChatMessage = {
-        id: uuid(),
+        id: Crypto.randomUUID(),
         role: 'assistant',
         text: fixedUpdated.notes || 'Done! Invoice updated.',
         timestamp: Date.now(),
@@ -73,7 +73,7 @@ export default function BillEditorScreen() {
       const message =
         err instanceof Error ? err.message : 'Failed to apply edit.';
       const errorMsg: ChatMessage = {
-        id: uuid(),
+        id: Crypto.randomUUID(),
         role: 'assistant',
         text: `Error: ${message}`,
         timestamp: Date.now(),
