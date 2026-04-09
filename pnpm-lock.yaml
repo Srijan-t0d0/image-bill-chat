@@ -10,9 +10,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@ai-sdk/google':
-        specifier: ^3.0.61
-        version: 3.0.61(zod@4.3.6)
       '@image-bill-chat/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -25,6 +22,9 @@ importers:
       hono:
         specifier: ^4.7.0
         version: 4.12.12
+      workers-ai-provider:
+        specifier: ^3.1.10
+        version: 3.1.10(@ai-sdk/provider@3.0.8)(ai@6.0.154(zod@4.3.6))
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -128,12 +128,6 @@ packages:
 
   '@ai-sdk/gateway@3.0.94':
     resolution: {integrity: sha512-uDDwLZhCkvC89crVS3S90D5L7AcVN8WriGuYVNYgVAaVcvy3Mthy3R9ICfzG75BObhz6pm2FWnhxDfNRK+t69Q==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/google@3.0.61':
-    resolution: {integrity: sha512-jEKU1Mjcy5CoicejdJQIzM0ntYwyXR8vtYgAZYriKaOuLAiAhiiU538++fGU3CC9HJH/mL1OfsCwMM3gFiCNsw==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3978,6 +3972,12 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
+  workers-ai-provider@3.1.10:
+    resolution: {integrity: sha512-PEf+eijYbeZD5kfWO6uWOmWshq99H3mOtx6nCDhSfBOYv90qfkec2QqsGM3+c5gpP0YU8+gPq7v7KUplwf8mug==}
+    peerDependencies:
+      '@ai-sdk/provider': ^3.0.0
+      ai: ^6.0.0
+
   wrangler@4.81.1:
     resolution: {integrity: sha512-fppPXi+W2KJ5bx1zxdUYe1e7CHj5cWPFVBPXy8hSMZhrHeIojMe3ozAktAOw1voVuQjXzbZJf/GVKyVeSjbF8w==}
     engines: {node: '>=20.3.0'}
@@ -4126,12 +4126,6 @@ snapshots:
       '@ai-sdk/provider': 3.0.8
       '@ai-sdk/provider-utils': 4.0.23(zod@4.3.6)
       '@vercel/oidc': 3.1.0
-      zod: 4.3.6
-
-  '@ai-sdk/google@3.0.61(zod@4.3.6)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.8
-      '@ai-sdk/provider-utils': 4.0.23(zod@4.3.6)
       zod: 4.3.6
 
   '@ai-sdk/provider-utils@4.0.23(zod@4.3.6)':
@@ -8243,6 +8237,11 @@ snapshots:
       '@cloudflare/workerd-linux-64': 1.20260409.1
       '@cloudflare/workerd-linux-arm64': 1.20260409.1
       '@cloudflare/workerd-windows-64': 1.20260409.1
+
+  workers-ai-provider@3.1.10(@ai-sdk/provider@3.0.8)(ai@6.0.154(zod@4.3.6)):
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      ai: 6.0.154(zod@4.3.6)
 
   wrangler@4.81.1(@cloudflare/workers-types@4.20260409.1):
     dependencies:

@@ -1,3 +1,6 @@
-# Google Gemini API key for bill OCR and NL editing
-# Get yours at: https://aistudio.google.com/apikey
-GOOGLE_GENERATIVE_AI_API_KEY=your-google-api-key-here
+# No API keys needed! Workers AI uses the built-in AI binding.
+# The AI binding is configured in wrangler.toml: [ai] binding = "AI"
+#
+# If you later switch to an external provider (Google, OpenAI, etc.),
+# add the API key here:
+# GOOGLE_GENERATIVE_AI_API_KEY=your-key-here

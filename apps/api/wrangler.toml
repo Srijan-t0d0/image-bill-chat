@@ -6,4 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bill-chat-db"
-database_id = "placeholder-replace-after-d1-create"
+database_id = "81c5c62a-1fc3-40b8-b4ce-6f2cd701cedf"
+
+[ai]
+binding = "AI"

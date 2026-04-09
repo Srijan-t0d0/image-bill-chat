@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { generateText, Output } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createWorkersAI } from 'workers-ai-provider';
 import { invoiceSchema, OCR_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT } from '@image-bill-chat/shared';
 import type { Env } from '../index';
 
@@ -14,12 +14,10 @@ aiRoutes.post('/extract', async (c) => {
     return c.json({ error: 'image (base64) is required' }, 400);
   }
 
-  const google = createGoogleGenerativeAI({
-    apiKey: c.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  });
+  const workersai = createWorkersAI({ binding: c.env.AI });
 
   const { output } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: workersai('@cf/google/gemma-4-26b-a4b-it'),
     system: OCR_SYSTEM_PROMPT,
     messages: [
       {
@@ -65,12 +63,10 @@ aiRoutes.post('/edit', async (c) => {
     return c.json({ error: 'invoice and instruction are required' }, 400);
   }
 
-  const google = createGoogleGenerativeAI({
-    apiKey: c.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  });
+  const workersai = createWorkersAI({ binding: c.env.AI });
 
   const { output } = await generateText({
-    model: google('gemini-2.5-flash'),
+    model: workersai('@cf/google/gemma-4-26b-a4b-it'),
     system: EDIT_SYSTEM_PROMPT,
     prompt: `Current invoice JSON:\n${JSON.stringify(invoice, null, 2)}\n\nUser instruction: "${instruction}"\n\nApply the instruction and return the complete updated invoice.`,
     output: Output.object({ schema: invoiceSchema }),

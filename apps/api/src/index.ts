@@ -9,7 +9,7 @@ import type { Database } from './db';
 export type Env = {
   Bindings: {
     DB: D1Database;
-    GOOGLE_GENERATIVE_AI_API_KEY: string;
+    AI: Ai;
   };
   Variables: {
     db: Database;
