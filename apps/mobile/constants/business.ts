@@ -1,18 +1,39 @@
-export const BUSINESS = {
-  name: 'NIRAJ KUMAR SINGH',
-  address: 'Sadanandpur, Begusarai, Bihar, 851211',
-  phone: '7631600300',
-  email: 'nirajda1968@gmail.com',
-  pan: 'EECPS7168D',
-  gstin: '10EECPS7168D1ZL',
-  udyam: 'UDYAM-BR-06-0007279',
-  services: ['PA System', 'Stage lighting', 'Musical shows'],
+/**
+ * Business profile structure — filled by user during onboarding.
+ * No PII is stored in source code. All data lives in AsyncStorage on-device.
+ */
+export interface BusinessProfile {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  pan: string;
+  gstin: string;
+  udyam: string;
+  services: string[];
   bank: {
-    holder: 'Niraj kumar singh',
-    bank_name: 'State bank of india',
-    ifsc: 'SBIN0003589',
-    account: '41360497867',
+    holder: string;
+    bank_name: string;
+    ifsc: string;
+    account: string;
+  };
+}
+
+export const EMPTY_BUSINESS_PROFILE: BusinessProfile = {
+  name: '',
+  address: '',
+  phone: '',
+  email: '',
+  pan: '',
+  gstin: '',
+  udyam: '',
+  services: [],
+  bank: {
+    holder: '',
+    bank_name: '',
+    ifsc: '',
+    account: '',
   },
-} as const;
+};
 
 export const TAX_RATE = 18; // GST 18%

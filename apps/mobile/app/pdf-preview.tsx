@@ -8,11 +8,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useBillStore } from '../store/billStore';
+import { useProfileStore } from '../store/profileStore';
 import { sharePDF, generatePDF } from '../services/pdf';
 
 export default function PdfPreviewScreen() {
   const router = useRouter();
   const { pdfUri, invoice } = useBillStore();
+  const { profile } = useProfileStore();
 
   const handleShare = async () => {
     if (!pdfUri) {
@@ -29,7 +31,7 @@ export default function PdfPreviewScreen() {
   const handleRegenerate = async () => {
     if (!invoice) return;
     try {
-      const uri = await generatePDF(invoice);
+      const uri = await generatePDF(invoice, profile);
       useBillStore.getState().setPdfUri(uri);
       Alert.alert('Success', 'PDF regenerated!');
     } catch {

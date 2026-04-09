@@ -19,13 +19,13 @@ import { BillItemRow } from '../components/BillItemRow';
 import { BillSummary } from '../components/BillSummary';
 import { ChatInput } from '../components/ChatInput';
 import { ChatBubble } from '../components/ChatBubble';
-import { BUSINESS } from '../constants/business';
-import { formatINR } from '../utils/formatters';
+import { useProfileStore } from '../store/profileStore';
 import type { ChatMessage } from '../types/bill';
 
 export default function BillEditorScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const { profile } = useProfileStore();
   const {
     invoice,
     setInvoice,
@@ -87,7 +87,7 @@ export default function BillEditorScreen() {
 
   const handleGeneratePDF = async () => {
     try {
-      const uri = await generatePDF(invoice);
+      const uri = await generatePDF(invoice, profile);
       setPdfUri(uri);
       router.push('/pdf-preview');
     } catch (err) {
@@ -109,10 +109,10 @@ export default function BillEditorScreen() {
       >
         {/* Invoice Header */}
         <View style={styles.header}>
-          <Text style={styles.businessName}>{BUSINESS.name}</Text>
-          <Text style={styles.headerDetail}>
-            GSTIN: {BUSINESS.gstin}
-          </Text>
+          <Text style={styles.businessName}>{profile.name}</Text>
+          {profile.gstin ? (
+            <Text style={styles.headerDetail}>GSTIN: {profile.gstin}</Text>
+          ) : null}
         </View>
 
         {/* Meta Info */}

@@ -1,134 +1,136 @@
 import { Hono } from 'hono';
-import type { Bindings } from '../index';
+import { eq, desc } from 'drizzle-orm';
+import { invoices, invoiceEdits } from '../db/schema';
 import { invoiceSchema } from '@image-bill-chat/shared';
+import type { Env } from '../index';
 
-const invoiceRoutes = new Hono<{ Bindings: Bindings }>();
+const invoiceRoutes = new Hono<Env>();
 
 // Create invoice
 invoiceRoutes.post('/', async (c) => {
+  const db = c.get('db');
   const body = await c.req.json();
   const parsed = invoiceSchema.parse(body);
   const id = crypto.randomUUID();
 
-  await c.env.DB.prepare(`
-    INSERT INTO invoices (
-      id, invoice_number, customer_name, customer_address,
-      venue_name, project_name, event_date, duration_days,
-      subtotal, amount_paid, total_due, confidence_score,
-      needs_review, notes, line_items_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
+  await db.insert(invoices).values({
     id,
-    parsed.invoice_number,
-    parsed.customer_name,
-    parsed.customer_address,
-    parsed.venue_name,
-    parsed.project_name,
-    parsed.event_date,
-    parsed.duration_days,
-    parsed.subtotal,
-    parsed.amount_paid,
-    parsed.total_due,
-    parsed.confidence_score,
-    parsed.needs_review ? 1 : 0,
-    parsed.notes,
-    JSON.stringify(parsed.line_items),
-  ).run();
+    invoiceNumber: parsed.invoice_number,
+    customerName: parsed.customer_name,
+    customerAddress: parsed.customer_address,
+    venueName: parsed.venue_name,
+    projectName: parsed.project_name,
+    eventDate: parsed.event_date,
+    durationDays: parsed.duration_days,
+    subtotal: parsed.subtotal,
+    amountPaid: parsed.amount_paid,
+    totalDue: parsed.total_due,
+    confidenceScore: parsed.confidence_score,
+    needsReview: parsed.needs_review,
+    notes: parsed.notes,
+    lineItemsJson: JSON.stringify(parsed.line_items),
+  });
 
   return c.json({ id, ...parsed }, 201);
 });
 
 // List invoices (paginated)
 invoiceRoutes.get('/', async (c) => {
+  const db = c.get('db');
   const limit = Number(c.req.query('limit') || '20');
   const offset = Number(c.req.query('offset') || '0');
 
-  const { results } = await c.env.DB.prepare(
-    'SELECT * FROM invoices ORDER BY created_at DESC LIMIT ? OFFSET ?',
-  ).bind(limit, offset).all();
+  const rows = await db
+    .select()
+    .from(invoices)
+    .orderBy(desc(invoices.createdAt))
+    .limit(limit)
+    .offset(offset);
 
-  const invoices = (results ?? []).map((r) => ({
+  const result = rows.map((r) => ({
     ...r,
-    line_items: JSON.parse(r.line_items_json as string),
-    line_items_json: undefined,
-    needs_review: r.needs_review === 1,
+    line_items: JSON.parse(r.lineItemsJson),
+    lineItemsJson: undefined,
   }));
 
-  return c.json(invoices);
+  return c.json(result);
 });
 
 // Get single invoice
 invoiceRoutes.get('/:id', async (c) => {
+  const db = c.get('db');
   const id = c.req.param('id');
-  const row = await c.env.DB.prepare(
-    'SELECT * FROM invoices WHERE id = ?',
-  ).bind(id).first();
+
+  const row = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.id, id))
+    .get();
 
   if (!row) return c.json({ error: 'Invoice not found' }, 404);
 
   return c.json({
     ...row,
-    line_items: JSON.parse(row.line_items_json as string),
-    line_items_json: undefined,
-    needs_review: row.needs_review === 1,
+    line_items: JSON.parse(row.lineItemsJson),
+    lineItemsJson: undefined,
   });
 });
 
 // Update invoice
 invoiceRoutes.put('/:id', async (c) => {
+  const db = c.get('db');
   const id = c.req.param('id');
   const body = await c.req.json();
   const parsed = invoiceSchema.parse(body);
 
-  await c.env.DB.prepare(`
-    UPDATE invoices SET
-      invoice_number = ?, customer_name = ?, customer_address = ?,
-      venue_name = ?, project_name = ?, event_date = ?, duration_days = ?,
-      subtotal = ?, amount_paid = ?, total_due = ?, confidence_score = ?,
-      needs_review = ?, notes = ?, line_items_json = ?,
-      updated_at = datetime('now')
-    WHERE id = ?
-  `).bind(
-    parsed.invoice_number,
-    parsed.customer_name,
-    parsed.customer_address,
-    parsed.venue_name,
-    parsed.project_name,
-    parsed.event_date,
-    parsed.duration_days,
-    parsed.subtotal,
-    parsed.amount_paid,
-    parsed.total_due,
-    parsed.confidence_score,
-    parsed.needs_review ? 1 : 0,
-    parsed.notes,
-    JSON.stringify(parsed.line_items),
-    id,
-  ).run();
+  await db
+    .update(invoices)
+    .set({
+      invoiceNumber: parsed.invoice_number,
+      customerName: parsed.customer_name,
+      customerAddress: parsed.customer_address,
+      venueName: parsed.venue_name,
+      projectName: parsed.project_name,
+      eventDate: parsed.event_date,
+      durationDays: parsed.duration_days,
+      subtotal: parsed.subtotal,
+      amountPaid: parsed.amount_paid,
+      totalDue: parsed.total_due,
+      confidenceScore: parsed.confidence_score,
+      needsReview: parsed.needs_review,
+      notes: parsed.notes,
+      lineItemsJson: JSON.stringify(parsed.line_items),
+    })
+    .where(eq(invoices.id, id));
 
   return c.json({ id, ...parsed });
 });
 
 // Delete invoice
 invoiceRoutes.delete('/:id', async (c) => {
+  const db = c.get('db');
   const id = c.req.param('id');
-  await c.env.DB.prepare('DELETE FROM invoices WHERE id = ?').bind(id).run();
+  await db.delete(invoices).where(eq(invoices.id, id));
   return c.json({ ok: true });
 });
 
 // Get edit history for an invoice
 invoiceRoutes.get('/:id/history', async (c) => {
+  const db = c.get('db');
   const id = c.req.param('id');
-  const { results } = await c.env.DB.prepare(
-    'SELECT * FROM invoice_edits WHERE invoice_id = ? ORDER BY created_at DESC',
-  ).bind(id).all();
 
-  const edits = (results ?? []).map((r) => ({
+  const rows = await db
+    .select()
+    .from(invoiceEdits)
+    .where(eq(invoiceEdits.invoiceId, id))
+    .orderBy(desc(invoiceEdits.createdAt));
+
+  const edits = rows.map((r) => ({
     ...r,
-    invoice_before: JSON.parse(r.invoice_before_json as string),
-    invoice_after: JSON.parse(r.invoice_after_json as string),
-    invoice_before_json: undefined,
-    invoice_after_json: undefined,
+    invoice_before: JSON.parse(r.invoiceBeforeJson),
+    invoice_after: JSON.parse(r.invoiceAfterJson),
+    invoiceBeforeJson: undefined,
+    invoiceAfterJson: undefined,
   }));
 
   return c.json(edits);
@@ -136,21 +138,19 @@ invoiceRoutes.get('/:id/history', async (c) => {
 
 // Save an edit snapshot
 invoiceRoutes.post('/:id/edits', async (c) => {
+  const db = c.get('db');
   const invoiceId = c.req.param('id');
   const body = await c.req.json();
   const id = crypto.randomUUID();
 
-  await c.env.DB.prepare(`
-    INSERT INTO invoice_edits (id, invoice_id, message_id, instruction, invoice_before_json, invoice_after_json)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(
+  await db.insert(invoiceEdits).values({
     id,
     invoiceId,
-    body.message_id || null,
-    body.instruction,
-    JSON.stringify(body.invoice_before),
-    JSON.stringify(body.invoice_after),
-  ).run();
+    messageId: body.message_id || null,
+    instruction: body.instruction,
+    invoiceBeforeJson: JSON.stringify(body.invoice_before),
+    invoiceAfterJson: JSON.stringify(body.invoice_after),
+  });
 
   return c.json({ id }, 201);
 });

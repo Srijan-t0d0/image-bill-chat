@@ -1,10 +1,11 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { Invoice } from '../types/bill';
-import { BUSINESS, TAX_RATE } from '../constants/business';
+import type { BusinessProfile } from '../constants/business';
+import { TAX_RATE } from '../constants/business';
 import { formatINR, numberToWords, capitalize } from '../utils/formatters';
 
-function generateBillHTML(invoice: Invoice): string {
+function generateBillHTML(invoice: Invoice, business: BusinessProfile): string {
   const itemsHTML = invoice.line_items
     .map(
       (item, i) => `
@@ -21,6 +22,14 @@ function generateBillHTML(invoice: Invoice): string {
     .join('\n');
 
   const totalWords = capitalize(numberToWords(invoice.subtotal)) + ' rupees only';
+
+  const servicesLine = business.services.length > 0
+    ? `<p class="services">Services: ${business.services.join(' | ')}</p>`
+    : '';
+
+  const panLine = business.pan ? `PAN: ${business.pan}` : '';
+  const gstinLine = business.gstin ? `GSTIN: ${business.gstin}` : '';
+  const taxIdLine = [panLine, gstinLine].filter(Boolean).join(' | ');
 
   return `<!DOCTYPE html>
 <html>
@@ -58,12 +67,12 @@ function generateBillHTML(invoice: Invoice): string {
 <body>
 
 <div class="header">
-  <h1>${BUSINESS.name}</h1>
-  <p>${BUSINESS.address}</p>
-  <p>Phone: ${BUSINESS.phone} | Email: ${BUSINESS.email}</p>
-  <p>PAN: ${BUSINESS.pan} | GSTIN: ${BUSINESS.gstin}</p>
-  <p>${BUSINESS.udyam}</p>
-  <p class="services">Services: ${BUSINESS.services.join(' | ')}</p>
+  <h1>${business.name}</h1>
+  ${business.address ? `<p>${business.address}</p>` : ''}
+  ${business.phone || business.email ? `<p>${[business.phone ? `Phone: ${business.phone}` : '', business.email ? `Email: ${business.email}` : ''].filter(Boolean).join(' | ')}</p>` : ''}
+  ${taxIdLine ? `<p>${taxIdLine}</p>` : ''}
+  ${business.udyam ? `<p>${business.udyam}</p>` : ''}
+  ${servicesLine}
 </div>
 
 <div class="invoice-title">Invoice</div>
@@ -104,13 +113,14 @@ function generateBillHTML(invoice: Invoice): string {
 </table>
 
 <div class="footer">
+  ${business.bank.holder ? `
   <div class="bank-details">
     <h3>Bank Details</h3>
-    <p><strong>Name:</strong> ${BUSINESS.bank.holder}</p>
-    <p><strong>Bank:</strong> ${BUSINESS.bank.bank_name}</p>
-    <p><strong>A/C:</strong> ${BUSINESS.bank.account}</p>
-    <p><strong>IFSC:</strong> ${BUSINESS.bank.ifsc}</p>
-  </div>
+    <p><strong>Name:</strong> ${business.bank.holder}</p>
+    ${business.bank.bank_name ? `<p><strong>Bank:</strong> ${business.bank.bank_name}</p>` : ''}
+    ${business.bank.account ? `<p><strong>A/C:</strong> ${business.bank.account}</p>` : ''}
+    ${business.bank.ifsc ? `<p><strong>IFSC:</strong> ${business.bank.ifsc}</p>` : ''}
+  </div>` : '<div class="bank-details"></div>'}
   <div class="totals">
     <table>
       <tr>
@@ -143,8 +153,8 @@ function generateBillHTML(invoice: Invoice): string {
 </html>`;
 }
 
-export async function generatePDF(invoice: Invoice): Promise<string> {
-  const html = generateBillHTML(invoice);
+export async function generatePDF(invoice: Invoice, business: BusinessProfile): Promise<string> {
+  const html = generateBillHTML(invoice, business);
   const { uri } = await Print.printToFileAsync({ html, width: 612, height: 792 });
   return uri;
 }

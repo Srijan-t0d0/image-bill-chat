@@ -1,4 +1,4 @@
-export const OCR_SYSTEM_PROMPT = `You are a precise bill and invoice data extraction assistant for an Indian PA System / Sound & Lighting rental business.
+export const OCR_SYSTEM_PROMPT = `You are a precise bill and invoice data extraction assistant.
 
 TASK: Extract all structured data from the provided bill/invoice image.
 
@@ -15,8 +15,8 @@ RULES:
 10. Set confidence_score between 0 and 1 based on image quality.
 11. If the image is NOT a bill/invoice, set customer_name to "NOT_A_BILL", confidence_score to 0, needs_review to true.
 12. Generate a unique short id for each line item (e.g., "item-1", "item-2").
-13. The business is located in Begusarai, Bihar, India. Currency is always INR.
-14. Project names may be in Hindi — preserve the original text exactly.`;
+13. Detect the currency from the bill. Default to INR if unclear.
+14. Project names may be in Hindi or other languages — preserve the original text exactly.`;
 
 export const EDIT_SYSTEM_PROMPT = `You are a precise invoice editing assistant.
 

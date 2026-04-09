@@ -1,39 +1,44 @@
 import { Hono } from 'hono';
-import type { Bindings } from '../index';
+import { eq, asc } from 'drizzle-orm';
+import { chatMessages } from '../db/schema';
+import type { Env } from '../index';
 
-const messageRoutes = new Hono<{ Bindings: Bindings }>();
+const messageRoutes = new Hono<Env>();
 
 // Get all chat messages for an invoice
 messageRoutes.get('/:invoiceId', async (c) => {
+  const db = c.get('db');
   const invoiceId = c.req.param('invoiceId');
-  const { results } = await c.env.DB.prepare(
-    'SELECT * FROM chat_messages WHERE invoice_id = ? ORDER BY timestamp ASC',
-  ).bind(invoiceId).all();
 
-  return c.json(results ?? []);
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.invoiceId, invoiceId))
+    .orderBy(asc(chatMessages.timestamp));
+
+  return c.json(rows);
 });
 
 // Add a single chat message
 messageRoutes.post('/:invoiceId', async (c) => {
+  const db = c.get('db');
   const invoiceId = c.req.param('invoiceId');
   const body = await c.req.json();
 
-  await c.env.DB.prepare(`
-    INSERT INTO chat_messages (id, invoice_id, role, text, timestamp)
-    VALUES (?, ?, ?, ?, ?)
-  `).bind(
-    body.id,
+  await db.insert(chatMessages).values({
+    id: body.id,
     invoiceId,
-    body.role,
-    body.text,
-    body.timestamp,
-  ).run();
+    role: body.role,
+    text: body.text,
+    timestamp: body.timestamp,
+  });
 
   return c.json({ ok: true }, 201);
 });
 
 // Batch add messages (for syncing)
 messageRoutes.post('/:invoiceId/batch', async (c) => {
+  const db = c.get('db');
   const invoiceId = c.req.param('invoiceId');
   const { messages } = await c.req.json();
 
@@ -41,16 +46,17 @@ messageRoutes.post('/:invoiceId/batch', async (c) => {
     return c.json({ error: 'messages array is required' }, 400);
   }
 
-  const stmt = c.env.DB.prepare(`
-    INSERT OR IGNORE INTO chat_messages (id, invoice_id, role, text, timestamp)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  const batch = messages.map((msg: { id: string; role: string; text: string; timestamp: number }) =>
-    stmt.bind(msg.id, invoiceId, msg.role, msg.text, msg.timestamp),
+  const values = messages.map(
+    (msg: { id: string; role: string; text: string; timestamp: number }) => ({
+      id: msg.id,
+      invoiceId,
+      role: msg.role,
+      text: msg.text,
+      timestamp: msg.timestamp,
+    }),
   );
 
-  await c.env.DB.batch(batch);
+  await db.insert(chatMessages).values(values).onConflictDoNothing();
 
   return c.json({ ok: true, count: messages.length }, 201);
 });
