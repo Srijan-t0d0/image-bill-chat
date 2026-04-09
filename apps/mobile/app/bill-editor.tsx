@@ -19,9 +19,11 @@ import { BillItemRow } from '../components/BillItemRow';
 import { BillSummary } from '../components/BillSummary';
 import { ChatInput } from '../components/ChatInput';
 import { ChatBubble } from '../components/ChatBubble';
+import { EditableField } from '../components/EditableField';
 import { useProfileStore } from '../store/profileStore';
 import { api } from '../lib/api/client';
-import type { ChatMessage } from '../types/bill';
+import type { Invoice, BillLineItem, ChatMessage } from '../types/bill';
+import { TAX_RATE } from '../constants/business';
 
 export default function BillEditorScreen() {
   const router = useRouter();
@@ -48,6 +50,68 @@ export default function BillEditorScreen() {
     );
   }
 
+  // ── Inline edit: update a top-level invoice field ──
+  const updateField = (field: keyof Invoice, value: string | number) => {
+    const updated = { ...invoice, [field]: value };
+    setInvoice(validateAndFixBill(updated));
+  };
+
+  // ── Inline edit: update a line item field + recalculate ──
+  const updateItemField = (
+    itemId: string,
+    field: keyof BillLineItem,
+    value: string | number,
+  ) => {
+    const updatedItems = invoice.line_items.map((item) => {
+      if (item.id !== itemId) return item;
+      const updated = { ...item, [field]: value };
+      // Recalculate this item's tax and amount
+      const base = updated.unit_price * updated.units * updated.days;
+      updated.tax_amount = Math.round(base * (TAX_RATE / 100));
+      updated.amount = base + updated.tax_amount;
+      return updated;
+    });
+    const updatedInvoice: Invoice = {
+      ...invoice,
+      line_items: updatedItems,
+      subtotal: updatedItems.reduce((sum, i) => sum + i.amount, 0),
+      total_due: 0,
+    };
+    updatedInvoice.total_due = updatedInvoice.subtotal - updatedInvoice.amount_paid;
+    setInvoice(updatedInvoice);
+  };
+
+  // ── Add a new empty line item ──
+  const addItem = () => {
+    const newItem: BillLineItem = {
+      id: `item-${Crypto.randomUUID().slice(0, 8)}`,
+      description: '',
+      unit_price: 0,
+      units: 1,
+      days: 1,
+      tax_amount: 0,
+      amount: 0,
+    };
+    const updated: Invoice = {
+      ...invoice,
+      line_items: [...invoice.line_items, newItem],
+    };
+    setInvoice(updated);
+  };
+
+  // ── Remove a line item ──
+  const removeItem = (itemId: string) => {
+    const updatedItems = invoice.line_items.filter((i) => i.id !== itemId);
+    const subtotal = updatedItems.reduce((sum, i) => sum + i.amount, 0);
+    setInvoice({
+      ...invoice,
+      line_items: updatedItems,
+      subtotal,
+      total_due: subtotal - invoice.amount_paid,
+    });
+  };
+
+  // ── NL edit via AI ──
   const handleNLEdit = async (instruction: string) => {
     const userMsg: ChatMessage = {
       id: Crypto.randomUUID(),
@@ -91,8 +155,8 @@ export default function BillEditorScreen() {
       const uri = await generatePDF(invoice, profile);
       setPdfUri(uri);
       router.push('/pdf-preview');
-    } catch (err) {
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    } catch {
+      Alert.alert('Error', 'Failed to generate PDF.');
     }
   };
 
@@ -101,8 +165,8 @@ export default function BillEditorScreen() {
       const uri = await api.generateSpreadsheet(invoice, profile);
       setPdfUri(uri);
       router.push('/pdf-preview');
-    } catch (err) {
-      Alert.alert('Error', 'Failed to generate spreadsheet. Please try again.');
+    } catch {
+      Alert.alert('Error', 'Failed to generate spreadsheet.');
     }
   };
 
@@ -126,41 +190,103 @@ export default function BillEditorScreen() {
           ) : null}
         </View>
 
-        {/* Meta Info */}
+        {/* Editable Meta Info */}
         <View style={styles.metaRow}>
           <View style={styles.metaBox}>
             <Text style={styles.metaLabel}>Customer</Text>
-            <Text style={styles.metaValue}>{invoice.customer_name}</Text>
-            <Text style={styles.metaSub}>{invoice.customer_address}</Text>
+            <EditableField
+              value={invoice.customer_name}
+              onSave={(v) => updateField('customer_name', v)}
+              style={styles.metaValue}
+              placeholder="Customer name"
+            />
+            <EditableField
+              value={invoice.customer_address}
+              onSave={(v) => updateField('customer_address', v)}
+              style={styles.metaSub}
+              placeholder="Address"
+            />
           </View>
           <View style={[styles.metaBox, styles.metaRight]}>
             <Text style={styles.metaLabel}>Invoice #</Text>
-            <Text style={styles.metaValue}>{invoice.invoice_number}</Text>
-            <Text style={styles.metaSub}>{invoice.event_date}</Text>
+            <EditableField
+              value={invoice.invoice_number}
+              onSave={(v) => updateField('invoice_number', v)}
+              style={{ ...styles.metaValue, textAlign: 'right' }}
+              placeholder="INV-001"
+            />
+            <EditableField
+              value={invoice.event_date}
+              onSave={(v) => updateField('event_date', v)}
+              style={{ ...styles.metaSub, textAlign: 'right' }}
+              placeholder="Date"
+            />
           </View>
         </View>
 
-        {/* Venue */}
+        {/* Editable Venue */}
         <View style={styles.venueBox}>
           <Text style={styles.metaLabel}>Venue</Text>
-          <Text style={styles.metaValue}>{invoice.venue_name}</Text>
-          <Text style={styles.metaSub}>{invoice.project_name}</Text>
+          <EditableField
+            value={invoice.venue_name}
+            onSave={(v) => updateField('venue_name', v)}
+            style={styles.metaValue}
+            placeholder="Venue name"
+          />
+          <EditableField
+            value={invoice.project_name}
+            onSave={(v) => updateField('project_name', v)}
+            style={styles.metaSub}
+            placeholder="Project name"
+          />
         </View>
 
         {/* Items Header */}
         <View style={styles.itemsHeader}>
           <Text style={[styles.colHeader, { width: 24, textAlign: 'center' }]}>#</Text>
-          <Text style={[styles.colHeader, { flex: 1, paddingHorizontal: 6 }]}>Item</Text>
-          <Text style={[styles.colHeader, { width: 60, textAlign: 'right' }]}>Price</Text>
-          <Text style={[styles.colHeader, { width: 30, textAlign: 'center' }]}>Qty</Text>
+          <Text style={[styles.colHeader, { flex: 1, paddingHorizontal: 4 }]}>Item</Text>
+          <Text style={[styles.colHeader, { width: 55, textAlign: 'right' }]}>Price</Text>
+          <Text style={[styles.colHeader, { width: 32, textAlign: 'center' }]}>Qty</Text>
           <Text style={[styles.colHeader, { width: 30, textAlign: 'center' }]}>Day</Text>
-          <Text style={[styles.colHeader, { width: 70, textAlign: 'right' }]}>Amount</Text>
+          <Text style={[styles.colHeader, { width: 65, textAlign: 'right' }]}>Amt</Text>
         </View>
 
-        {/* Items */}
+        {/* Editable Items */}
         {invoice.line_items.map((item, index) => (
-          <BillItemRow key={item.id} item={item} index={index} />
+          <View key={item.id}>
+            <BillItemRow
+              item={item}
+              index={index}
+              onUpdate={updateItemField}
+            />
+            {/* Swipe-to-delete hint: long press to remove */}
+            <TouchableOpacity
+              onLongPress={() => {
+                Alert.alert(
+                  'Remove Item',
+                  `Remove "${item.description || 'this item'}"?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Remove',
+                      style: 'destructive',
+                      onPress: () => removeItem(item.id),
+                    },
+                  ],
+                );
+              }}
+              style={styles.deleteHint}
+              activeOpacity={1}
+            >
+              <Text style={styles.deleteHintText}>hold to remove</Text>
+            </TouchableOpacity>
+          </View>
         ))}
+
+        {/* Add Item Button */}
+        <TouchableOpacity style={styles.addItemButton} onPress={addItem} activeOpacity={0.7}>
+          <Text style={styles.addItemText}>+ Add Item</Text>
+        </TouchableOpacity>
 
         {/* Summary */}
         <BillSummary invoice={invoice} />
@@ -172,14 +298,14 @@ export default function BillEditorScreen() {
             onPress={handleGenerateXLSX}
             activeOpacity={0.8}
           >
-            <Text style={styles.generateButtonText}>📊 Excel Invoice</Text>
+            <Text style={styles.generateButtonText}>📊 Excel</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.pdfButton}
             onPress={handleGeneratePDF}
             activeOpacity={0.8}
           >
-            <Text style={styles.generateButtonText}>📄 PDF Invoice</Text>
+            <Text style={styles.generateButtonText}>📄 PDF</Text>
           </TouchableOpacity>
         </View>
 
@@ -196,7 +322,7 @@ export default function BillEditorScreen() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Chat Input */}
+      {/* Chat Input — AI edits */}
       <ChatInput onSend={handleNLEdit} isLoading={isEditing} />
     </KeyboardAvoidingView>
   );
@@ -276,6 +402,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     textTransform: 'uppercase',
+  },
+  deleteHint: {
+    alignItems: 'flex-end',
+    paddingRight: 8,
+    paddingBottom: 2,
+  },
+  deleteHintText: {
+    fontSize: 9,
+    color: '#d1d5db',
+  },
+  addItemButton: {
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  addItemText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b7280',
   },
   generateButtons: {
     flexDirection: 'row',
